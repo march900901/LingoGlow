@@ -74,12 +74,12 @@ class SupabaseService with ChangeNotifier {
     try {
       // In Flutter Web/Mobile, we trigger OAuth sign-in.
       // Supabase supports google OAuth provider.
-      final response = await _client!.auth.signInWithOAuth(
+      await _client!.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo: kIsWeb ? null : 'io.supabase.lingoglow://login-callback',
       );
       notifyListeners();
-      return response;
+      return true;
     } catch (e) {
       debugPrint('Google sign in error: $e');
       return false;
