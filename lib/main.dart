@@ -52,7 +52,7 @@ class LingoGlowApp extends StatelessWidget {
           bodyLarge: const TextStyle(color: Colors.white, fontSize: 16),
           bodyMedium: const TextStyle(color: Colors.white70, fontSize: 14),
         ),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           color: const Color(0xFF131926),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
