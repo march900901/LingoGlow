@@ -462,7 +462,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
           label: '同義字 (目標至少 3 個)',
           hint: _synsChecked ? '已鎖定' : '輸入後按 Enter 或空格',
           accentColor: const Color(0xFF9966FF),
-          onChanged: _synsChecked ? (_) {} : (tags) => _userSynonyms = tags,
+          onChanged: _synsChecked ? (tags) {} : (tags) => _userSynonyms = tags,
         ),
         const SizedBox(height: 20),
         
@@ -472,7 +472,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
           label: '反義字 (目標至少 2 個)',
           hint: _synsChecked ? '已鎖定' : '輸入後按 Enter 或空格',
           accentColor: const Color(0xFFFF3366),
-          onChanged: _synsChecked ? (_) {} : (tags) => _userAntonyms = tags,
+          onChanged: _synsChecked ? (tags) {} : (tags) => _userAntonyms = tags,
         ),
         const SizedBox(height: 28),
 

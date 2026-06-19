@@ -46,7 +46,6 @@ class LingoGlowApp extends StatelessWidget {
           primary: Color(0xFF9966FF),
           secondary: Color(0xFF00FFCC), // Neon Cyan
           surface: Color(0xFF131926),
-          background: Color(0xFF090D16),
           error: Color(0xFFFF3366), // Neon Pink/Red
         ),
         textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme).copyWith(
