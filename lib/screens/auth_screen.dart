@@ -19,7 +19,7 @@ class _AuthScreenState extends State<AuthScreen> {
   void initState() {
     super.initState();
     final supabase = context.read<SupabaseService>();
-    _urlController.text = supabase.client?.supabaseUrl ?? '';
+    _urlController.text = supabase.supabaseUrl ?? '';
   }
 
   @override

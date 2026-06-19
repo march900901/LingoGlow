@@ -14,6 +14,7 @@ class SupabaseService with ChangeNotifier {
   }
 
   SupabaseClient? get client => _client;
+  String? get supabaseUrl => _storage.supabaseUrl;
   bool get isConnected => _isConnected;
   bool get isConnecting => _isConnecting;
   bool get hasCredentials => _storage.supabaseUrl != null && _storage.supabaseKey != null;
