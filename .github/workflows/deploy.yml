@@ -36,14 +36,11 @@ jobs:
       - name: Build Web Version with debugging log
         run: |
           flutter build web --release --base-href "/LingoGlow/" > build_output.log 2>&1 || (
-            echo "=== BUILD FAILED ===" >> build_output.log
-            echo "=== RUNNING ANALYZE ===" >> build_output.log
-            flutter analyze >> build_output.log 2>&1
-            git config --global user.name "GitHub Action"
-            git config --global user.email "action@github.com"
-            git add build_output.log
-            git commit -m "Add build output log for debugging [skip ci]"
-            git push -f origin main:temp-log-branch
+            echo "=== BUILD FAILED ==="
+            echo "=== RUNNING ANALYZE ==="
+            flutter analyze || true
+            echo "=== DETAILED BUILD OUTPUT ==="
+            cat build_output.log
             exit 1
           )
 
