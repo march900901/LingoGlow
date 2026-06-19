@@ -21,6 +21,15 @@ jobs:
         with:
           channel: 'stable'
 
+      - name: Backup custom pubspec
+        run: cp pubspec.yaml pubspec.yaml.bak
+
+      - name: Generate Web platform template
+        run: flutter create --platforms=web .
+
+      - name: Restore custom pubspec
+        run: cp pubspec.yaml.bak pubspec.yaml
+
       - name: Install dependencies
         run: flutter pub get
 
