@@ -1,0 +1,48 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate.cfg
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The Directory-Level Settings File
+.vscode/settings.json
+
+# Web tools
+.project
+.classpath
+.settings/
+.cache/
+
+# Flutter/Dart related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Symbol lookup databases
+.turing_db/
+
+# Database / Secret keys
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+supabase_keys.json
