@@ -32,7 +32,7 @@ class WordModel {
     DateTime? nextReviewDate,
     this.createdAt,
     this.updatedAt,
-  }) : this.nextReviewDate = nextReviewDate ?? DateTime.now();
+  }) : nextReviewDate = nextReviewDate ?? DateTime.now();
 
   bool get isDue {
     return DateTime.now().isAfter(nextReviewDate);
