@@ -105,6 +105,38 @@ class WordsProvider with ChangeNotifier {
     }
   }
 
+  Future<void> addWordsBulk(List<WordModel> newWords) async {
+    if (newWords.isEmpty) return;
+
+    final List<WordModel> normalized = [];
+    for (final w in newWords) {
+      final exists = _words.any((existing) => existing.word.trim().toLowerCase() == w.word.trim().toLowerCase());
+      if (exists) continue;
+
+      normalized.add(
+        WordModel(
+          word: w.word.trim(),
+          definition: w.definition.trim(),
+          synonyms: w.synonyms.map((s) => s.trim().toLowerCase()).toList(),
+          antonyms: w.antonyms.map((a) => a.trim().toLowerCase()).toList(),
+          sampleSentence: w.sampleSentence?.trim(),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+    }
+
+    if (normalized.isEmpty) return;
+
+    _words.addAll(normalized);
+    await _storage.saveWords(_words);
+    notifyListeners();
+
+    if (_supabase.isConnected && _supabase.isAuthenticated) {
+      await syncWithCloud();
+    }
+  }
+
   Future<void> updateWord(WordModel updated) async {
     final idx = _words.indexWhere((w) => w.word.toLowerCase() == updated.word.toLowerCase() || (w.id != null && w.id == updated.id));
     if (idx == -1) return;
