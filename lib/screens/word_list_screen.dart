@@ -623,10 +623,10 @@ class _WordListScreenState extends State<WordListScreen> {
                           Expanded(
                             child: Text(
                               word.sampleSentence!,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
                                 fontStyle: FontStyle.italic,
-                                color: Colors.white90,
+                                color: Colors.white.withOpacity(0.9),
                                 height: 1.4,
                               ),
                             ),
