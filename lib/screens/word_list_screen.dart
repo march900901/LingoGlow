@@ -667,27 +667,7 @@ class _WordListScreenState extends State<WordListScreen> {
                   ),
                 ],
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _showAddEditDialog(word: word);
-              },
-              child: const Text('編輯單字', style: TextStyle(color: Color(0xFF9966FF))),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('關閉', style: TextStyle(color: Colors.white54)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildStatRow(String label, String value, {Widget? suffixWidget}) {
+            )  Widget _buildStatRow(String label, String value, {Widget? suffixWidget}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -705,10 +685,66 @@ class _WordListScreenState extends State<WordListScreen> {
     );
   }
 
+  Map<String, String> _parseWordAndMeaning(String line) {
+    line = line.trim();
+    if (line.isEmpty) return {'word': '', 'meaning': ''};
+
+    // Try split by common separators first
+    final separators = ['|', '\t', '：', ' - '];
+    for (final sep in separators) {
+      if (line.contains(sep)) {
+        final index = line.indexOf(sep);
+        final first = line.substring(0, index).trim();
+        final second = line.substring(index + sep.length).trim();
+        if (first.isNotEmpty && second.isNotEmpty) {
+          return {'word': first, 'meaning': second};
+        }
+      }
+    }
+
+    // Try split by half-width colon ':' (only if it's not a url)
+    if (line.contains(':') && !line.contains('://')) {
+      final index = line.indexOf(':');
+      final first = line.substring(0, index).trim();
+      final second = line.substring(index + 1).trim();
+      if (first.isNotEmpty && second.isNotEmpty) {
+        return {'word': first, 'meaning': second};
+      }
+    }
+
+    // Regex for: [English word] [Whitespace] [Chinese/Any other characters (meaning)]
+    // We can match English letters (including spaces/hyphens inside, but ending with a word boundary)
+    // followed by any non-English characters.
+    final regex = RegExp(r'^([a-zA-Z\s\-]+?)\s+([^\x00-\x7F].*)$');
+    final match = regex.firstMatch(line);
+    if (match != null) {
+      final word = match.group(1)?.trim() ?? '';
+      final meaning = match.group(2)?.trim() ?? '';
+      if (word.isNotEmpty && meaning.isNotEmpty) {
+        return {'word': word, 'meaning': meaning};
+      }
+    }
+
+    // If it contains a space, and the first part is English, we can fallback to splitting by space
+    if (line.contains(' ')) {
+      final index = line.indexOf(' ');
+      final first = line.substring(0, index).trim();
+      final second = line.substring(index + 1).trim();
+      // Ensure the first part is a valid English word (only alphabets, optional hyphens)
+      final englishWordRegex = RegExp(r'^[a-zA-Z\-]+$');
+      if (englishWordRegex.hasMatch(first) && second.isNotEmpty) {
+        return {'word': first, 'meaning': second};
+      }
+    }
+
+    // Default fallback: the whole line is the word, no meaning provided yet
+    return {'word': line, 'meaning': ''};
+  }
+
   void _showBulkImportDialog() {
     String importText = '';
-    String formatType = 'csv'; // 'csv' or 'words'
-    bool autoQuery = true;
+    String formatType = 'smart'; // 'smart' or 'csv'
+    bool autoSupplement = true;
     bool isImporting = false;
     String progressMessage = '';
 
@@ -741,8 +777,8 @@ class _WordListScreenState extends State<WordListScreen> {
                             value: formatType,
                             dropdownColor: const Color(0xFF131926),
                             items: const [
+                              DropdownMenuItem(value: 'smart', child: Text('智慧解析 (單字 意思 / 純單字)', style: TextStyle(color: Colors.white))),
                               DropdownMenuItem(value: 'csv', child: Text('管線分隔 (CSV/Text)', style: TextStyle(color: Colors.white))),
-                              DropdownMenuItem(value: 'words', child: Text('純英文單字列表 (一行一個)', style: TextStyle(color: Colors.white))),
                             ],
                             onChanged: isImporting 
                                 ? null 
@@ -767,36 +803,39 @@ class _WordListScreenState extends State<WordListScreen> {
                           border: Border.all(color: Colors.white10),
                         ),
                         child: Text(
-                          formatType == 'csv'
-                              ? '格式：單字|定義|同義詞(以逗號分隔)|反義詞(以逗號分隔)|例句(選填)\n例：accommodate|容納|house,hold|exclude,reject|The room can accommodate 5 guests.'
-                              : '格式：每行輸入一個英文單字。\n例：\ngregarious\nubiquitous\nephemeral',
+                          formatType == 'smart'
+                              ? '支援多種輸入，系統會自動判斷單字與定義：\n1. 純單字列表 (如：gregarious)\n2. 空白/符號分隔 (如：apple 蘋果、benevolent - 仁慈)\n3. 冒號分隔 (如：ubiquitous: 普遍存在的)'
+                              : '格式：單字|定義|同義詞(以逗號分隔)|反義詞(以逗號分隔)|例句(選填)\n例：accommodate|容納|house,hold|exclude,reject|The room can accommodate 5 guests.',
                           style: const TextStyle(color: Colors.white60, fontSize: 12, height: 1.4),
                         ),
                       ),
                       const SizedBox(height: 16),
 
-                      // Auto query checkbox (only for word list)
-                      if (formatType == 'words') ...[
-                        Row(
-                          children: [
-                            Checkbox(
-                              value: autoQuery,
-                              activeColor: const Color(0xFF9966FF),
-                              onChanged: isImporting 
-                                  ? null 
-                                  : (v) {
-                                      if (v != null) {
-                                        setState(() {
-                                          autoQuery = v;
-                                        });
-                                      }
-                                    },
+                      // Auto supplement checkbox (always visible)
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: autoSupplement,
+                            activeColor: const Color(0xFF9966FF),
+                            onChanged: isImporting 
+                                ? null 
+                                : (v) {
+                                    if (v != null) {
+                                      setState(() {
+                                        autoSupplement = v;
+                                      });
+                                    }
+                                  },
+                          ),
+                          const Expanded(
+                            child: Text(
+                              '自動聯網補齊不足的定義、同義/反義字及例句',
+                              style: TextStyle(color: Colors.white70, fontSize: 13),
                             ),
-                            const Text('自動查詢翻譯、同義及反義字', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                      ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
 
                       // Large TextField
                       if (!isImporting) ...[
@@ -804,9 +843,9 @@ class _WordListScreenState extends State<WordListScreen> {
                           maxLines: 8,
                           style: const TextStyle(color: Colors.white, fontSize: 14),
                           decoration: InputDecoration(
-                            hintText: formatType == 'csv'
-                                ? '請在此貼上管線分隔的文字內容...'
-                                : '請在此貼上單字列表，一行一個...',
+                            hintText: formatType == 'smart'
+                                ? '請在此貼上單字內容 (支援: 純單字、單字 意思、單字 - 意思...)'
+                                : '請在此貼上管線分隔的文字內容...',
                             hintStyle: const TextStyle(color: Colors.white24),
                             filled: true,
                             fillColor: const Color(0xFF090D16),
@@ -870,80 +909,102 @@ class _WordListScreenState extends State<WordListScreen> {
                           try {
                             final List<WordModel> wordsToImport = [];
 
-                            if (formatType == 'csv') {
-                              for (int i = 0; i < lines.length; i++) {
-                                final line = lines[i];
+                            for (int i = 0; i < lines.length; i++) {
+                              final line = lines[i];
+                              String wordText = '';
+                              String defText = '';
+                              List<String> synonymsList = [];
+                              List<String> antonymsList = [];
+                              String? sentence;
+
+                              if (formatType == 'csv') {
                                 final parts = line.split('|');
                                 if (parts.length < 4) {
                                   throw Exception('第 ${i + 1} 行格式不符，至少需要：單字|定義|同義詞|反義詞');
                                 }
-                                final wordText = parts[0].trim();
-                                final defText = parts[1].trim();
-                                final synonymsList = parts[2]
+                                wordText = parts[0].trim();
+                                defText = parts[1].trim();
+                                synonymsList = parts[2]
                                     .split(',')
                                     .map((s) => s.trim())
                                     .where((s) => s.isNotEmpty)
                                     .toList();
-                                final antonymsList = parts[3]
+                                antonymsList = parts[3]
                                     .split(',')
                                     .map((a) => a.trim())
                                     .where((a) => a.isNotEmpty)
                                     .toList();
-                                final sentence = parts.length > 4 ? parts[4].trim() : null;
-
-                                wordsToImport.add(
-                                  WordModel(
-                                    word: wordText,
-                                    definition: defText,
-                                    synonyms: synonymsList,
-                                    antonyms: antonymsList,
-                                    sampleSentence: sentence,
-                                  ),
-                                );
+                                sentence = parts.length > 4 ? parts[4].trim() : null;
+                              } else {
+                                // Smart parsing
+                                final parsed = _parseWordAndMeaning(line);
+                                wordText = parsed['word'] ?? '';
+                                defText = parsed['meaning'] ?? '';
+                                synonymsList = [];
+                                antonymsList = [];
+                                sentence = null;
                               }
-                            } else {
-                              // Plain word list
-                              for (int i = 0; i < lines.length; i++) {
-                                final wordText = lines[i];
-                                
-                                if (autoQuery) {
-                                  setState(() {
-                                    progressMessage = '正在自動查詢第 ${i + 1}/${lines.length} 個單字:\n"$wordText"';
-                                  });
-                                  try {
-                                    final result = await DictionaryLookupService.lookup(wordText);
-                                    wordsToImport.add(
-                                      WordModel(
-                                        word: result.word,
-                                        definition: result.definition,
-                                        synonyms: result.synonyms,
-                                        antonyms: result.antonyms,
-                                        sampleSentence: result.sampleSentence,
-                                      ),
-                                    );
-                                  } catch (e) {
-                                    // Fallback if lookup fails
-                                    wordsToImport.add(
-                                      WordModel(
-                                        word: wordText,
-                                        definition: '查詢失敗，請手動修改',
-                                        synonyms: [],
-                                        antonyms: [],
-                                      ),
-                                    );
+
+                              if (wordText.isEmpty) continue;
+
+                              // Check if we need to auto-supplement
+                              final needsDefinition = defText.isEmpty || 
+                                  defText == '請輸入中文意思' || 
+                                  defText == '未找到中文翻譯 (請手動輸入)';
+                              final needsSynonyms = synonymsList.length < 3;
+                              final needsAntonyms = antonymsList.length < 2;
+                              final needsSentence = sentence == null || sentence.isEmpty;
+
+                              if (autoSupplement && (needsDefinition || needsSynonyms || needsAntonyms || needsSentence)) {
+                                setState(() {
+                                  progressMessage = '正在聯網查詢與補齊第 ${i + 1}/${lines.length} 個單字:\n"$wordText"';
+                                });
+                                try {
+                                  final apiResult = await DictionaryLookupService.lookup(wordText);
+                                  
+                                  // Supplement definition
+                                  if (needsDefinition) {
+                                    defText = apiResult.definition;
                                   }
-                                } else {
-                                  // Add empty word details if auto query is disabled
-                                  wordsToImport.add(
-                                    WordModel(
-                                      word: wordText,
-                                      definition: '請輸入中文意思',
-                                      synonyms: [],
-                                      antonyms: [],
-                                    ),
-                                  );
+                                  
+                                  // Supplement synonyms (avoid duplicates)
+                                  if (needsSynonyms) {
+                                    final mergedSyn = {...synonymsList, ...apiResult.synonyms};
+                                    synonymsList = mergedSyn.toList();
+                                  }
+                                  
+                                  // Supplement antonyms (avoid duplicates)
+                                  if (needsAntonyms) {
+                                    final mergedAnt = {...antonymsList, ...apiResult.antonyms};
+                                    antonymsList = mergedAnt.toList();
+                                  }
+                                  
+                                  // Supplement sentence
+                                  if (needsSentence) {
+                                    sentence = apiResult.sampleSentence;
+                                  }
+                                } catch (e) {
+                                  // Fallback: If lookup fails, keep user-provided or blank/defaults
+                                  if (defText.isEmpty) {
+                                    defText = '請輸入中文意思';
+                                  }
+                                }
+                              } else {
+                                // If not auto-supplementing and definition is still empty, set default placeholder
+                                if (defText.isEmpty) {
+                                  defText = '請輸入中文意思';
                                 }
                               }
+
+                              wordsToImport.add(
+                                WordModel(
+                                  word: wordText,
+                                  definition: defText,
+                                  synonyms: synonymsList,
+                                  antonyms: antonymsList,
+                                  sampleSentence: sentence,
+                                ),
+                              );
                             }
 
                             setState(() {
