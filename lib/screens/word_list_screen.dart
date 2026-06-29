@@ -39,11 +39,6 @@ class _WordListScreenState extends State<WordListScreen> {
               });
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.file_upload, color: Colors.white70),
-            tooltip: '批量匯入',
-            onPressed: () => _showBulkImportDialog(),
-          ),
           const SizedBox(width: 8),
         ],
       ),
@@ -160,7 +155,7 @@ class _WordListScreenState extends State<WordListScreen> {
                                       children: [
                                         _buildTagChip('同 x${word.synonyms.length}', const Color(0xFF9966FF)),
                                         const SizedBox(width: 4),
-                                        _buildTagChip('反 x${word.antonyms.length}', const Color(0xFFFF3366)),
+                                        _buildTagChip('句 x${word.sampleSentence?.split('\n').where((s) => s.isNotEmpty).length ?? 0}', const Color(0xFF00FFCC)),
                                       ],
                                     ),
                                     const Divider(color: Colors.white10, height: 12),
@@ -234,7 +229,7 @@ class _WordListScreenState extends State<WordListScreen> {
                                     children: [
                                       _buildTagChip('同義詞 x${word.synonyms.length}', const Color(0xFF9966FF)),
                                       const SizedBox(width: 8),
-                                      _buildTagChip('反義詞 x${word.antonyms.length}', const Color(0xFFFF3366)),
+                                      _buildTagChip('例句 x${word.sampleSentence?.split('\n').where((s) => s.isNotEmpty).length ?? 0}', const Color(0xFF00FFCC)),
                                     ],
                                   )
                                 ],
@@ -313,11 +308,21 @@ class _WordListScreenState extends State<WordListScreen> {
     final formKey = GlobalKey<FormState>();
     final wordController = TextEditingController(text: word?.word ?? '');
     final defController = TextEditingController(text: word?.definition ?? '');
-    final sentenceController = TextEditingController(text: word?.sampleSentence ?? '');
-    bool isAutoQuerying = false;
     
-    List<String> synonyms = word?.synonyms ?? [];
-    List<String> antonyms = word?.antonyms ?? [];
+    // Parse existing synonyms (exactly 3)
+    final syn1Controller = TextEditingController(
+        text: (word?.synonyms != null && word!.synonyms.isNotEmpty) ? word.synonyms[0] : '');
+    final syn2Controller = TextEditingController(
+        text: (word?.synonyms != null && word!.synonyms.length > 1) ? word.synonyms[1] : '');
+    final syn3Controller = TextEditingController(
+        text: (word?.synonyms != null && word!.synonyms.length > 2) ? word.synonyms[2] : '');
+
+    // Parse existing sentences (exactly 2)
+    final existingSentences = word?.sampleSentence?.split('\n') ?? [];
+    final sentence1Controller = TextEditingController(
+        text: existingSentences.isNotEmpty ? existingSentences[0] : '');
+    final sentence2Controller = TextEditingController(
+        text: existingSentences.length > 1 ? existingSentences[1] : '');
 
     showDialog(
       context: context,
@@ -337,77 +342,16 @@ class _WordListScreenState extends State<WordListScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         // Word Field
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: wordController,
-                                enabled: word == null, // Word cannot be changed on edit
-                                style: const TextStyle(color: Colors.white),
-                                decoration: const InputDecoration(
-                                  labelText: '單字 (English)',
-                                  labelStyle: TextStyle(color: Colors.white60),
-                                  border: UnderlineInputBorder(),
-                                ),
-                                validator: (v) => (v == null || v.trim().isEmpty) ? '請輸入英文單字' : null,
-                              ),
-                            ),
-                            if (word == null) ...[
-                              const SizedBox(width: 12),
-                              ElevatedButton.icon(
-                                onPressed: isAutoQuerying 
-                                    ? null 
-                                    : () async {
-                                        final text = wordController.text.trim();
-                                        if (text.isEmpty) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('請先輸入英文單字！')),
-                                          );
-                                          return;
-                                        }
-                                        setState(() {
-                                          isAutoQuerying = true;
-                                        });
-                                        try {
-                                          final result = await DictionaryLookupService.lookup(text);
-                                          setState(() {
-                                            defController.text = result.definition;
-                                            synonyms = result.synonyms;
-                                            antonyms = result.antonyms;
-                                            if (result.sampleSentence != null) {
-                                              sentenceController.text = result.sampleSentence!;
-                                            }
-                                          });
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('自動查詢成功！')),
-                                          );
-                                        } catch (e) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text('自動查詢失敗: $e')),
-                                          );
-                                        } finally {
-                                          setState(() {
-                                            isAutoQuerying = false;
-                                          });
-                                        }
-                                      },
-                                icon: isAutoQuerying 
-                                    ? const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                      )
-                                    : const Icon(Icons.auto_awesome, size: 16),
-                                label: const Text('自動生成'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF00FFCC),
-                                  foregroundColor: Colors.black,
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                ),
-                              ),
-                            ],
-                          ],
+                        TextFormField(
+                          controller: wordController,
+                          enabled: word == null, // Word cannot be changed on edit
+                          style: const TextStyle(color: Colors.white),
+                          decoration: const InputDecoration(
+                            labelText: '單字 (English)',
+                            labelStyle: TextStyle(color: Colors.white60),
+                            border: UnderlineInputBorder(),
+                          ),
+                          validator: (v) => (v == null || v.trim().isEmpty) ? '請輸入英文單字' : null,
                         ),
                         const SizedBox(height: 16),
                         
@@ -422,43 +366,88 @@ class _WordListScreenState extends State<WordListScreen> {
                           ),
                           validator: (v) => (v == null || v.trim().isEmpty) ? '請輸入中文定義' : null,
                         ),
-                        const SizedBox(height: 20),
-                        
-                        // Synonyms Chip Input
-                        SynonymInput(
-                          initialTags: synonyms,
-                          label: '同義字 (至少 3 個)',
-                          hint: '輸入單字後按逗號、空格或Enter新增',
-                          accentColor: const Color(0xFF9966FF),
-                          onChanged: (tags) {
-                            synonyms = tags;
-                          },
+                        const SizedBox(height: 24),
+
+                        // Synonyms Header
+                        const Text(
+                          '同義字 (請輸入 3 個)',
+                          style: TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.bold),
                         ),
-                        const SizedBox(height: 20),
-                        
-                        // Antonyms Chip Input
-                        SynonymInput(
-                          initialTags: antonyms,
-                          label: '反義字 (至少 2 個)',
-                          hint: '輸入單字後按逗號、空格或Enter新增',
-                          accentColor: const Color(0xFFFF3366),
-                          onChanged: (tags) {
-                            antonyms = tags;
-                          },
-                        ),
-                        const SizedBox(height: 20),
-                        
-                        // Sentence Field
+                        const SizedBox(height: 8),
+
+                        // Synonym 1
                         TextFormField(
-                          controller: sentenceController,
-                          maxLines: 2,
-                          style: const TextStyle(color: Colors.white),
+                          controller: syn1Controller,
+                          style: const TextStyle(color: Colors.white, fontSize: 14),
                           decoration: const InputDecoration(
-                            labelText: '造句 / 例句 (選填)',
-                            labelStyle: TextStyle(color: Colors.white60),
-                            border: OutlineInputBorder(),
-                            hintText: '例：The hotel can accommodate guests.',
+                            labelText: '同義字 1',
+                            labelStyle: TextStyle(color: Colors.white30, fontSize: 12),
+                            border: UnderlineInputBorder(),
                           ),
+                          validator: (v) => (v == null || v.trim().isEmpty) ? '請輸入同義字 1' : null,
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Synonym 2
+                        TextFormField(
+                          controller: syn2Controller,
+                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                          decoration: const InputDecoration(
+                            labelText: '同義字 2',
+                            labelStyle: TextStyle(color: Colors.white30, fontSize: 12),
+                            border: UnderlineInputBorder(),
+                          ),
+                          validator: (v) => (v == null || v.trim().isEmpty) ? '請輸入同義字 2' : null,
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Synonym 3
+                        TextFormField(
+                          controller: syn3Controller,
+                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                          decoration: const InputDecoration(
+                            labelText: '同義字 3',
+                            labelStyle: TextStyle(color: Colors.white30, fontSize: 12),
+                            border: UnderlineInputBorder(),
+                          ),
+                          validator: (v) => (v == null || v.trim().isEmpty) ? '請輸入同義字 3' : null,
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Sentences Header
+                        const Text(
+                          '造句 / 例句 (請輸入 2 個句子)',
+                          style: TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Sentence 1
+                        TextFormField(
+                          controller: sentence1Controller,
+                          maxLines: 2,
+                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                          decoration: const InputDecoration(
+                            labelText: '句子 1',
+                            labelStyle: TextStyle(color: Colors.white60, fontSize: 12),
+                            border: OutlineInputBorder(),
+                            hintText: '輸入包含該單字的完整英文句子 1',
+                          ),
+                          validator: (v) => (v == null || v.trim().isEmpty) ? '請輸入句子 1' : null,
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Sentence 2
+                        TextFormField(
+                          controller: sentence2Controller,
+                          maxLines: 2,
+                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                          decoration: const InputDecoration(
+                            labelText: '句子 2',
+                            labelStyle: TextStyle(color: Colors.white60, fontSize: 12),
+                            border: OutlineInputBorder(),
+                            hintText: '輸入包含該單字的完整英文句子 2',
+                          ),
+                          validator: (v) => (v == null || v.trim().isEmpty) ? '請輸入句子 2' : null,
                         ),
                       ],
                     ),
@@ -473,38 +462,30 @@ class _WordListScreenState extends State<WordListScreen> {
                 ElevatedButton(
                   onPressed: () {
                     if (formKey.currentState!.validate()) {
-                      if (synonyms.length < 3) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('需要至少 3 個同義字！')),
-                        );
-                        return;
-                      }
-                      if (antonyms.length < 2) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('需要至少 2 個反義字！')),
-                        );
-                        return;
-                      }
-
                       final provider = context.read<WordsProvider>();
+                      final synonymsList = [
+                        syn1Controller.text.trim(),
+                        syn2Controller.text.trim(),
+                        syn3Controller.text.trim(),
+                      ];
+                      final joinedSentences = '${sentence1Controller.text.trim()}\n${sentence2Controller.text.trim()}';
+
                       if (word == null) {
                         // Create
                         provider.addWord(
                           word: wordController.text,
                           definition: defController.text,
-                          synonyms: synonyms,
-                          antonyms: antonyms,
-                          sampleSentence: sentenceController.text.isNotEmpty 
-                              ? sentenceController.text 
-                              : null,
+                          synonyms: synonymsList,
+                          antonyms: const [],
+                          sampleSentence: joinedSentences,
                         );
                       } else {
                         // Edit
                         final updated = word.copyWith(
                           definition: defController.text,
-                          synonyms: synonyms,
-                          antonyms: antonyms,
-                          sampleSentence: sentenceController.text,
+                          synonyms: synonymsList,
+                          antonyms: const [],
+                          sampleSentence: joinedSentences,
                         );
                         provider.updateWord(updated);
                       }
@@ -591,49 +572,44 @@ class _WordListScreenState extends State<WordListScreen> {
                         ),
                   const Divider(color: Colors.white10, height: 24),
 
-                  // Antonyms
-                  const Text('反義詞', style: TextStyle(color: Colors.white30, fontSize: 12, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  word.antonyms.isEmpty
-                      ? const Text('無', style: TextStyle(color: Colors.white30))
-                      : Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: word.antonyms.map((a) => _buildTagChip(a, const Color(0xFFFF3366))).toList(),
-                        ),
-                  const Divider(color: Colors.white10, height: 24),
-
-                  // Sample Sentence
+                  // Sample Sentences
                   if (word.sampleSentence != null && word.sampleSentence!.isNotEmpty) ...[
                     const Text('例句', style: TextStyle(color: Colors.white30, fontSize: 12, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.03),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white10),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(Icons.format_quote, color: Color(0xFF9966FF), size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              word.sampleSentence!,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontStyle: FontStyle.italic,
-                                color: Colors.white.withOpacity(0.9),
-                                height: 1.4,
+                    ...word.sampleSentence!
+                        .split('\n')
+                        .where((s) => s.isNotEmpty)
+                        .map((sentence) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8.0),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.03),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.white10),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(Icons.format_quote, color: Color(0xFF9966FF), size: 20),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        sentence,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontStyle: FontStyle.italic,
+                                          color: Colors.white.withOpacity(0.9),
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                            ))
+                        .toList(),
                     const Divider(color: Colors.white10, height: 24),
                   ],
 
@@ -682,362 +658,6 @@ class _WordListScreenState extends State<WordListScreen> {
           ],
         ),
       ],
-    );
-  }
-
-  Map<String, String> _parseWordAndMeaning(String line) {
-    line = line.trim();
-    if (line.isEmpty) return {'word': '', 'meaning': ''};
-
-    // Try split by common separators first
-    final separators = ['|', '\t', '：', ' - '];
-    for (final sep in separators) {
-      if (line.contains(sep)) {
-        final index = line.indexOf(sep);
-        final first = line.substring(0, index).trim();
-        final second = line.substring(index + sep.length).trim();
-        if (first.isNotEmpty && second.isNotEmpty) {
-          return {'word': first, 'meaning': second};
-        }
-      }
-    }
-
-    // Try split by half-width colon ':' (only if it's not a url)
-    if (line.contains(':') && !line.contains('://')) {
-      final index = line.indexOf(':');
-      final first = line.substring(0, index).trim();
-      final second = line.substring(index + 1).trim();
-      if (first.isNotEmpty && second.isNotEmpty) {
-        return {'word': first, 'meaning': second};
-      }
-    }
-
-    // Regex for: [English word] [Whitespace] [Chinese/Any other characters (meaning)]
-    // We can match English letters (including spaces/hyphens inside, but ending with a word boundary)
-    // followed by any non-English characters.
-    final regex = RegExp(r'^([a-zA-Z\s\-]+?)\s+([^\x00-\x7F].*)$');
-    final match = regex.firstMatch(line);
-    if (match != null) {
-      final word = match.group(1)?.trim() ?? '';
-      final meaning = match.group(2)?.trim() ?? '';
-      if (word.isNotEmpty && meaning.isNotEmpty) {
-        return {'word': word, 'meaning': meaning};
-      }
-    }
-
-    // If it contains a space, and the first part is English, we can fallback to splitting by space
-    if (line.contains(' ')) {
-      final index = line.indexOf(' ');
-      final first = line.substring(0, index).trim();
-      final second = line.substring(index + 1).trim();
-      // Ensure the first part is a valid English word (only alphabets, optional hyphens)
-      final englishWordRegex = RegExp(r'^[a-zA-Z\-]+$');
-      if (englishWordRegex.hasMatch(first) && second.isNotEmpty) {
-        return {'word': first, 'meaning': second};
-      }
-    }
-
-    // Default fallback: the whole line is the word, no meaning provided yet
-    return {'word': line, 'meaning': ''};
-  }
-
-  void _showBulkImportDialog() {
-    String importText = '';
-    String formatType = 'smart'; // 'smart' or 'csv'
-    bool autoSupplement = true;
-    bool isImporting = false;
-    String progressMessage = '';
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              backgroundColor: const Color(0xFF131926),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: const BorderSide(color: Colors.white10),
-              ),
-              title: const Text('批量匯入單字', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              content: SizedBox(
-                width: 550,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Format selection
-                      Row(
-                        children: [
-                          const Text('匯入格式：', style: TextStyle(color: Colors.white70)),
-                          const SizedBox(width: 8),
-                          DropdownButton<String>(
-                            value: formatType,
-                            dropdownColor: const Color(0xFF131926),
-                            items: const [
-                              DropdownMenuItem(value: 'smart', child: Text('智慧解析 (單字 意思 / 純單字)', style: TextStyle(color: Colors.white))),
-                              DropdownMenuItem(value: 'csv', child: Text('管線分隔 (CSV/Text)', style: TextStyle(color: Colors.white))),
-                            ],
-                            onChanged: isImporting 
-                                ? null 
-                                : (v) {
-                                    if (v != null) {
-                                      setState(() {
-                                        formatType = v;
-                                      });
-                                    }
-                                  },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Format explanation
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.03),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.white10),
-                        ),
-                        child: Text(
-                          formatType == 'smart'
-                              ? '支援多種輸入，系統會自動判斷單字與定義：\n1. 純單字列表 (如：gregarious)\n2. 空白/符號分隔 (如：apple 蘋果、benevolent - 仁慈)\n3. 冒號分隔 (如：ubiquitous: 普遍存在的)'
-                              : '格式：單字|定義|同義詞(以逗號分隔)|反義詞(以逗號分隔)|例句(選填)\n例：accommodate|容納|house,hold|exclude,reject|The room can accommodate 5 guests.',
-                          style: const TextStyle(color: Colors.white60, fontSize: 12, height: 1.4),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Auto supplement checkbox (always visible)
-                      Row(
-                        children: [
-                          Checkbox(
-                            value: autoSupplement,
-                            activeColor: const Color(0xFF9966FF),
-                            onChanged: isImporting 
-                                ? null 
-                                : (v) {
-                                    if (v != null) {
-                                      setState(() {
-                                        autoSupplement = v;
-                                      });
-                                    }
-                                  },
-                          ),
-                          const Expanded(
-                            child: Text(
-                              '自動聯網補齊不足的定義、同義/反義字及例句',
-                              style: TextStyle(color: Colors.white70, fontSize: 13),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Large TextField
-                      if (!isImporting) ...[
-                        TextField(
-                          maxLines: 8,
-                          style: const TextStyle(color: Colors.white, fontSize: 14),
-                          decoration: InputDecoration(
-                            hintText: formatType == 'smart'
-                                ? '請在此貼上單字內容 (支援: 純單字、單字 意思、單字 - 意思...)'
-                                : '請在此貼上管線分隔的文字內容...',
-                            hintStyle: const TextStyle(color: Colors.white24),
-                            filled: true,
-                            fillColor: const Color(0xFF090D16),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.white10),
-                            ),
-                          ),
-                          onChanged: (v) {
-                            importText = v;
-                          },
-                        ),
-                      ] else ...[
-                        // Progress loader
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 24),
-                          child: Column(
-                            children: [
-                              const CircularProgressIndicator(color: Color(0xFF9966FF)),
-                              const SizedBox(height: 16),
-                              Text(
-                                progressMessage,
-                                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isImporting ? null : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('取消', style: TextStyle(color: Colors.white54)),
-                ),
-                ElevatedButton(
-                  onPressed: isImporting 
-                      ? null 
-                      : () async {
-                          final lines = importText
-                              .split('\n')
-                              .map((l) => l.trim())
-                              .where((l) => l.isNotEmpty)
-                              .toList();
-
-                          if (lines.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('請先輸入要匯入的內容！')),
-                            );
-                            return;
-                          }
-
-                          setState(() {
-                            isImporting = true;
-                            progressMessage = '正在解析資料...';
-                          });
-
-                          try {
-                            final List<WordModel> wordsToImport = [];
-
-                            for (int i = 0; i < lines.length; i++) {
-                              final line = lines[i];
-                              String wordText = '';
-                              String defText = '';
-                              List<String> synonymsList = [];
-                              List<String> antonymsList = [];
-                              String? sentence;
-
-                              if (formatType == 'csv') {
-                                final parts = line.split('|');
-                                if (parts.length < 4) {
-                                  throw Exception('第 ${i + 1} 行格式不符，至少需要：單字|定義|同義詞|反義詞');
-                                }
-                                wordText = parts[0].trim();
-                                defText = parts[1].trim();
-                                synonymsList = parts[2]
-                                    .split(',')
-                                    .map((s) => s.trim())
-                                    .where((s) => s.isNotEmpty)
-                                    .toList();
-                                antonymsList = parts[3]
-                                    .split(',')
-                                    .map((a) => a.trim())
-                                    .where((a) => a.isNotEmpty)
-                                    .toList();
-                                sentence = parts.length > 4 ? parts[4].trim() : null;
-                              } else {
-                                // Smart parsing
-                                final parsed = _parseWordAndMeaning(line);
-                                wordText = parsed['word'] ?? '';
-                                defText = parsed['meaning'] ?? '';
-                                synonymsList = [];
-                                antonymsList = [];
-                                sentence = null;
-                              }
-
-                              if (wordText.isEmpty) continue;
-
-                              // Check if we need to auto-supplement
-                              final needsDefinition = defText.isEmpty || 
-                                  defText == '請輸入中文意思' || 
-                                  defText == '未找到中文翻譯 (請手動輸入)';
-                              final needsSynonyms = synonymsList.length < 3;
-                              final needsAntonyms = antonymsList.length < 2;
-                              final needsSentence = sentence == null || sentence.isEmpty;
-
-                              if (autoSupplement && (needsDefinition || needsSynonyms || needsAntonyms || needsSentence)) {
-                                setState(() {
-                                  progressMessage = '正在聯網查詢與補齊第 ${i + 1}/${lines.length} 個單字:\n"$wordText"';
-                                });
-                                try {
-                                  final apiResult = await DictionaryLookupService.lookup(wordText);
-                                  
-                                  // Supplement definition
-                                  if (needsDefinition) {
-                                    defText = apiResult.definition;
-                                  }
-                                  
-                                  // Supplement synonyms (avoid duplicates)
-                                  if (needsSynonyms) {
-                                    final mergedSyn = {...synonymsList, ...apiResult.synonyms};
-                                    synonymsList = mergedSyn.toList();
-                                  }
-                                  
-                                  // Supplement antonyms (avoid duplicates)
-                                  if (needsAntonyms) {
-                                    final mergedAnt = {...antonymsList, ...apiResult.antonyms};
-                                    antonymsList = mergedAnt.toList();
-                                  }
-                                  
-                                  // Supplement sentence
-                                  if (needsSentence) {
-                                    sentence = apiResult.sampleSentence;
-                                  }
-                                } catch (e) {
-                                  // Fallback: If lookup fails, keep user-provided or blank/defaults
-                                  if (defText.isEmpty) {
-                                    defText = '請輸入中文意思';
-                                  }
-                                }
-                              } else {
-                                // If not auto-supplementing and definition is still empty, set default placeholder
-                                if (defText.isEmpty) {
-                                  defText = '請輸入中文意思';
-                                }
-                              }
-
-                              wordsToImport.add(
-                                WordModel(
-                                  word: wordText,
-                                  definition: defText,
-                                  synonyms: synonymsList,
-                                  antonyms: antonymsList,
-                                  sampleSentence: sentence,
-                                ),
-                              );
-                            }
-
-                            setState(() {
-                              progressMessage = '正在將 ${wordsToImport.length} 個單字儲存至單字庫...';
-                            });
-
-                            // Bulk add in provider
-                            await context.read<WordsProvider>().addWordsBulk(wordsToImport);
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('成功匯入 ${wordsToImport.length} 個單字！')),
-                            );
-                            Navigator.of(dialogContext).pop();
-                          } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('匯入失敗: $e')),
-                            );
-                            setState(() {
-                              isImporting = false;
-                            });
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF9966FF),
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('確認匯入'),
-                ),
-              ],
-            );
-          },
-        );
-      },
     );
   }
 }

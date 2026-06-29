@@ -15,7 +15,7 @@ class ReviewScreen extends StatefulWidget {
 }
 
 class _ReviewScreenState extends State<ReviewScreen> {
-  int _currentStep = 0; // 0: Spelling, 1: Synonyms/Antonyms, 2: Sentence, 3: Flashcard rating
+  int _currentStep = 0; // 0: Spelling, 1: Synonyms, 2: Sentence, 3: Flashcard rating
 
   // Spelling controller
   final TextEditingController _spellingController = TextEditingController();
@@ -25,7 +25,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   // Synonyms controllers
   List<String> _userSynonyms = [];
-  List<String> _userAntonyms = [];
   bool _synsChecked = false;
   bool _synsSufficient = true;
 
@@ -45,7 +44,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
     _spellingDiff = [];
 
     _userSynonyms = [];
-    _userAntonyms = [];
     _synsChecked = false;
     _synsSufficient = true;
 
@@ -75,7 +73,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
   void _checkSynonyms(WordModel word) {
     setState(() {
       _synsChecked = true;
-      _synsSufficient = _userSynonyms.length >= 3 && _userAntonyms.length >= 2;
+      final correctSet = word.synonyms.map((s) => s.trim().toLowerCase()).toSet();
+      final userSet = _userSynonyms.map((s) => s.trim().toLowerCase()).toSet();
+      _synsSufficient = userSet.intersection(correctSet).length >= 3;
     });
   }
 
@@ -340,11 +340,14 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   // --- Step 1: Spelling View ---
   Widget _buildSpellingStep(WordModel word) {
-    // Blank target word in sample sentence
-    String blankedSentence = '無提供例句';
+    List<String> blankedSentences = [];
     if (word.sampleSentence != null && word.sampleSentence!.isNotEmpty) {
       final regex = RegExp(word.word, caseSensitive: false);
-      blankedSentence = word.sampleSentence!.replaceAll(regex, '______');
+      blankedSentences = word.sampleSentence!
+          .split('\n')
+          .where((s) => s.isNotEmpty)
+          .map((s) => s.replaceAll(regex, '______'))
+          .toList();
     }
 
     return Column(
@@ -361,11 +364,28 @@ class _ReviewScreenState extends State<ReviewScreen> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 12),
-        Text(
-          '例句：$blankedSentence',
-          style: const TextStyle(color: Colors.white54, fontStyle: FontStyle.italic),
-          textAlign: TextAlign.center,
-        ),
+        if (blankedSentences.isNotEmpty) ...[
+          const Text(
+            '例句提示：',
+            style: TextStyle(color: Colors.white30, fontSize: 12, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          ...blankedSentences.map((s) => Padding(
+                padding: const EdgeInsets.only(bottom: 6.0),
+                child: Text(
+                  s,
+                  style: const TextStyle(color: Colors.white54, fontStyle: FontStyle.italic),
+                  textAlign: TextAlign.center,
+                ),
+              )),
+        ] else ...[
+          const Text(
+            '例句：無提供例句',
+            style: TextStyle(color: Colors.white54, fontStyle: FontStyle.italic),
+            textAlign: TextAlign.center,
+          ),
+        ],
         const SizedBox(height: 32),
         
         TextField(
@@ -451,7 +471,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          '請輸入 "${word.word}" 的同反義字：',
+          '請輸入 "${word.word}" 的 3 個同義字：',
           style: const TextStyle(color: Colors.white70, fontSize: 15),
         ),
         const SizedBox(height: 20),
@@ -463,16 +483,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
           hint: _synsChecked ? '已鎖定' : '輸入後按 Enter 或空格',
           accentColor: const Color(0xFF9966FF),
           onChanged: _synsChecked ? (tags) {} : (tags) => _userSynonyms = tags,
-        ),
-        const SizedBox(height: 20),
-        
-        // Antonyms input
-        SynonymInput(
-          initialTags: _userAntonyms,
-          label: '反義字 (目標至少 2 個)',
-          hint: _synsChecked ? '已鎖定' : '輸入後按 Enter 或空格',
-          accentColor: const Color(0xFFFF3366),
-          onChanged: _synsChecked ? (tags) {} : (tags) => _userAntonyms = tags,
         ),
         const SizedBox(height: 28),
 
@@ -491,7 +501,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      '輸入的字數不足，已為您顯示參考答案。',
+                      '拼寫不符或數量不足，已為您顯示參考解答。',
                       style: TextStyle(color: Colors.amberAccent, fontSize: 13),
                     ),
                   ),
@@ -504,7 +514,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
               children: [
                 Icon(Icons.check_circle, color: Color(0xFF00FFCC)),
                 SizedBox(width: 8),
-                Text('字數檢驗完成！', style: TextStyle(color: Color(0xFF00FFCC), fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('同義字匹配成功！', style: TextStyle(color: Color(0xFF00FFCC), fontSize: 16, fontWeight: FontWeight.bold)),
               ],
             ),
           
@@ -512,8 +522,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
           const Text('參考解答：', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 8),
           Text('建議同義字：${word.synonyms.join(", ")}', style: const TextStyle(color: Color(0xFF9966FF))),
-          const SizedBox(height: 4),
-          Text('建議反義字：${word.antonyms.join(", ")}', style: const TextStyle(color: Color(0xFFFF3366))),
           const SizedBox(height: 28),
         ],
 
@@ -668,12 +676,23 @@ class _ReviewScreenState extends State<ReviewScreen> {
               const SizedBox(height: 16),
               const Divider(color: Colors.white12),
               const SizedBox(height: 8),
-              if (word.sampleSentence != null)
-                Text(
-                  '例句：${word.sampleSentence}',
-                  style: const TextStyle(color: Colors.white60, fontStyle: FontStyle.italic),
-                  textAlign: TextAlign.center,
-                ),
+              if (word.sampleSentence != null && word.sampleSentence!.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                const Text('參考例句：', style: TextStyle(color: Colors.white30, fontSize: 12)),
+                const SizedBox(height: 4),
+                ...word.sampleSentence!
+                    .split('\n')
+                    .where((s) => s.isNotEmpty)
+                    .map((s) => Padding(
+                          padding: const EdgeInsets.only(top: 4.0),
+                          child: Text(
+                            s,
+                            style: const TextStyle(color: Colors.white60, fontStyle: FontStyle.italic),
+                            textAlign: TextAlign.center,
+                          ),
+                        ))
+                    .toList(),
+              ],
             ],
           ),
         ),
