@@ -41,10 +41,12 @@ jobs:
         run: |
           flutter build web --release --base-href "/LingoGlow/" > build_output.log 2>&1 || (
             echo "=== BUILD FAILED ==="
-            echo "=== RUNNING ANALYZE ==="
-            flutter analyze || true
-            echo "=== DETAILED BUILD OUTPUT ==="
-            cat build_output.log
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+            git checkout -b build-failures || git checkout build-failures
+            git add build_output.log
+            git commit -m "build failure logs"
+            git push origin build-failures --force
             exit 1
           )
 
