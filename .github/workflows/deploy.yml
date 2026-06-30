@@ -39,18 +39,16 @@ jobs:
 
       - name: Build Web Version with debugging log
         run: |
-          flutter build web --release --base-href "/LingoGlow/" > build_output.log 2>&1 || (
-            echo "=== BUILD FAILED ==="
-            git config --global user.name "github-actions[bot]"
-            git config --global user.email "github-actions[bot]@users.noreply.github.com"
-            git checkout -b build-failures || git checkout build-failures
-            git add build_output.log
-            git commit -m "build failure logs"
-            git push origin build-failures --force
-            exit 1
-          )
+          flutter build web --release --base-href "/LingoGlow/" > build_output.log 2>&1
+
+      - name: Handle build log on failure
+        if: failure()
+        run: |
+          mkdir -p ./build/web
+          cp build_output.log ./build/web/build_output.log
 
       - name: Deploy to GitHub Pages
+        if: always()
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

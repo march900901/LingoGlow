@@ -481,7 +481,7 @@ class _WordListScreenState extends State<WordListScreen> {
                         );
                       } else {
                         // Edit
-                        final updated = word.copyWith(
+                        final updated = word!.copyWith(
                           definition: defController.text,
                           synonyms: synonymsList,
                           antonyms: const <String>[],
