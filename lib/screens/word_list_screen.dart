@@ -155,7 +155,7 @@ class _WordListScreenState extends State<WordListScreen> {
                                       children: [
                                         _buildTagChip('同 x${word.synonyms.length}', const Color(0xFF9966FF)),
                                         const SizedBox(width: 4),
-                                        _buildTagChip('句 x${word.sampleSentence?.split('\n').where((s) => s.isNotEmpty).length ?? 0}', const Color(0xFF00FFCC)),
+                                        _buildTagChip('句 x${(word.sampleSentence?.split('\n') ?? []).where((s) => s.isNotEmpty).length}', const Color(0xFF00FFCC)),
                                       ],
                                     ),
                                     const Divider(color: Colors.white10, height: 12),
@@ -229,7 +229,7 @@ class _WordListScreenState extends State<WordListScreen> {
                                     children: [
                                       _buildTagChip('同義詞 x${word.synonyms.length}', const Color(0xFF9966FF)),
                                       const SizedBox(width: 8),
-                                      _buildTagChip('例句 x${word.sampleSentence?.split('\n').where((s) => s.isNotEmpty).length ?? 0}', const Color(0xFF00FFCC)),
+                                      _buildTagChip('例句 x${(word.sampleSentence?.split('\n') ?? []).where((s) => s.isNotEmpty).length}', const Color(0xFF00FFCC)),
                                     ],
                                   )
                                 ],
