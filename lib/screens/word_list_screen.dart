@@ -311,11 +311,11 @@ class _WordListScreenState extends State<WordListScreen> {
     
     // Parse existing synonyms (exactly 3)
     final syn1Controller = TextEditingController(
-        text: (word?.synonyms != null && word!.synonyms.isNotEmpty) ? word.synonyms[0] : '');
+        text: (word != null && word.synonyms.isNotEmpty) ? word.synonyms[0] : '');
     final syn2Controller = TextEditingController(
-        text: (word?.synonyms != null && word!.synonyms.length > 1) ? word.synonyms[1] : '');
+        text: (word != null && word.synonyms.length > 1) ? word.synonyms[1] : '');
     final syn3Controller = TextEditingController(
-        text: (word?.synonyms != null && word!.synonyms.length > 2) ? word.synonyms[2] : '');
+        text: (word != null && word.synonyms.length > 2) ? word.synonyms[2] : '');
 
     // Parse existing sentences (exactly 2)
     final existingSentences = word?.sampleSentence?.split('\n') ?? [];
@@ -476,7 +476,7 @@ class _WordListScreenState extends State<WordListScreen> {
                           word: wordController.text,
                           definition: defController.text,
                           synonyms: synonymsList,
-                          antonyms: const [],
+                          antonyms: const <String>[],
                           sampleSentence: joinedSentences,
                         );
                       } else {
@@ -484,7 +484,7 @@ class _WordListScreenState extends State<WordListScreen> {
                         final updated = word.copyWith(
                           definition: defController.text,
                           synonyms: synonymsList,
-                          antonyms: const [],
+                          antonyms: const <String>[],
                           sampleSentence: joinedSentences,
                         );
                         provider.updateWord(updated);
