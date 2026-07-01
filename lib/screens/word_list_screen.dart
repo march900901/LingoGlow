@@ -643,7 +643,14 @@ class _WordListScreenState extends State<WordListScreen> {
                   ),
                 ],
               ),
-            )  Widget _buildStatRow(String label, String value, {Widget? suffixWidget}) {
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatRow(String label, String value, {Widget? suffixWidget}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
